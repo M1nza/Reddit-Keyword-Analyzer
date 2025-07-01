@@ -1,120 +1,52 @@
 import streamlit as st
 import pandas as pd
-import snscrape.modules.twitter as sntwitter
-import re
-from collections import Counter
-import matplotlib.pyplot as plt
 from wordcloud import WordCloud
-import numpy as np
+import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Twitter Keyword Engagement Analyzer", layout="wide")
+# Expanded sample static tweet data (25 tweets)
+sample_tweets = [
+    {"content": "Love the new summer fashion trends! #fashion #style", "likes": 120, "retweets": 30},
+    {"content": "Beauty tips for glowing skin. #beauty #skincare", "likes": 200, "retweets": 50},
+    {"content": "Latest makeup haul video is live! #makeup #beauty", "likes": 150, "retweets": 40},
+    {"content": "Sustainable fashion is the future! #fashion #sustainability", "likes": 180, "retweets": 60},
+    {"content": "Trying out the new organic face mask today! #beauty #skincare", "likes": 90, "retweets": 20},
+    {"content": "Best shoes for summer outfits #fashion #shoes", "likes": 110, "retweets": 25},
+    {"content": "Tips for long-lasting makeup #makeup #beauty", "likes": 140, "retweets": 35},
+    {"content": "How to style oversized jackets #fashion #style", "likes": 160, "retweets": 45},
+    {"content": "My favorite lipstick shades this season #makeup #beauty", "likes": 130, "retweets": 30},
+    {"content": "DIY skincare routine for dry skin #beauty #skincare", "likes": 115, "retweets": 22},
+    {"content": "The comeback of 90s fashion! #fashion #retro", "likes": 170, "retweets": 55},
+    {"content": "Top 5 mascaras to try now #makeup #beauty", "likes": 125, "retweets": 28},
+    {"content": "Eco-friendly fabrics to look for #fashion #sustainability", "likes": 105, "retweets": 18},
+    {"content": "Easy hairstyles for every occasion #beauty #haircare", "likes": 145, "retweets": 33},
+    {"content": "Summer dresses you need in your wardrobe #fashion #style", "likes": 155, "retweets": 40},
+    {"content": "How to get flawless foundation coverage #makeup #beauty", "likes": 135, "retweets": 29},
+    {"content": "Benefits of using natural oils on your skin #beauty #skincare", "likes": 120, "retweets": 26},
+    {"content": "Casual outfits for weekend vibes #fashion #style", "likes": 140, "retweets": 32},
+    {"content": "Step-by-step contouring guide #makeup #beauty", "likes": 160, "retweets": 50},
+    {"content": "Must-have accessories this year #fashion #accessories", "likes": 110, "retweets": 21},
+    {"content": "How to keep your skin hydrated all day #beauty #skincare", "likes": 130, "retweets": 27},
+    {"content": "Mix and match your wardrobe basics #fashion #style", "likes": 150, "retweets": 38},
+    {"content": "Best eyeshadow palettes for beginners #makeup #beauty", "likes": 140, "retweets": 35},
+    {"content": "Why slow fashion matters #fashion #sustainability", "likes": 115, "retweets": 20},
+    {"content": "Nighttime skincare routine essentials #beauty #skincare", "likes": 125, "retweets": 24},
+]
 
-st.title("Twitter Keyword Engagement Analyzer")
-st.markdown("""
-Enter a niche keyword (e.g., beauty, fashion) to fetch recent tweets and analyze top keywords driving engagement (likes + retweets + replies).
-""")
+df = pd.DataFrame(sample_tweets)
 
-@st.cache_data(show_spinner=True)
-def fetch_tweets(keyword, limit=100):
-    query = f"{keyword} lang:en"
-    tweets_list = []
-    for i, tweet in enumerate(sntwitter.TwitterSearchScraper(query).get_items()):
-        if i >= limit:
-            break
-        tweets_list.append({
-            'content': tweet.content,
-            'likes': tweet.likeCount,
-            'retweets': tweet.retweetCount,
-            'replies': tweet.replyCount,
-            'engagement': tweet.likeCount + tweet.retweetCount + tweet.replyCount
-        })
-    return pd.DataFrame(tweets_list)
+st.title("Twitter Keyword Engagement Analyzer — Demo")
 
-def clean_text(text):
-    text = text.lower()
-    text = re.sub(r"http\S+", "", text)  # remove URLs
-    text = re.sub(r"@\w+", "", text)     # remove mentions
-    text = re.sub(r"[^a-z\s]", "", text) # keep only letters and spaces
-    return text
+st.write("Showing static sample tweets data for the Beauty & Fashion niche.")
 
-def extract_keywords(tweets_df):
-    all_words = []
-    for text in tweets_df['content']:
-        clean = clean_text(text)
-        words = clean.split()
-        all_words.extend(words)
-    # Filter out common English stopwords
-    stopwords = set([
-        'the', 'and', 'to', 'a', 'of', 'in', 'for', 'is', 'on', 'that', 'with', 'as',
-        'at', 'this', 'it', 'be', 'by', 'are', 'was', 'from', 'or', 'an', 'have', 'has',
-        'but', 'not', 'you', 'i', 'my', 'me', 'we', 'our', 'your', 'so', 'if', 'they',
-        'all', 'just', 'about', 'like', 'get', 'up', 'out', 'what', 'can', 'now', 'more',
-        'will', 'no', 'one', 'do', 'how', 'when', 'who', 'which', 'been', 'had', 'did',
-        'were', 'their', 'them'
-    ])
-    filtered_words = [w for w in all_words if w not in stopwords and len(w) > 2]
-    return filtered_words
+st.dataframe(df)
 
-def keyword_engagement(tweets_df, keywords):
-    # For each keyword, sum engagement from tweets that contain it
-    kw_engagement = {}
-    for kw in set(keywords):
-        mask = tweets_df['content'].str.lower().str.contains(kw)
-        total_engagement = tweets_df.loc[mask, 'engagement'].sum()
-        count = mask.sum()
-        if count > 0:
-            kw_engagement[kw] = {'engagement': total_engagement, 'count': count}
-    # Convert to DataFrame
-    df = pd.DataFrame.from_dict(kw_engagement, orient='index')
-    df['avg_engagement'] = df['engagement'] / df['count']
-    df = df.sort_values(by='avg_engagement', ascending=False)
-    return df
+# Combine all tweet content into one text
+text = " ".join(df['content'])
 
-def plot_bar(df):
-    fig, ax = plt.subplots(figsize=(10,6))
-    df.head(15)['avg_engagement'].plot(kind='bar', ax=ax, color='mediumvioletred')
-    ax.set_ylabel('Average Engagement (Likes + Retweets + Replies)')
-    ax.set_xlabel('Keyword')
-    ax.set_title('Top Keywords by Average Engagement')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    return fig
+# Generate a word cloud of keywords
+wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
 
-def plot_wordcloud(keywords):
-    text = ' '.join(keywords)
-    wordcloud = WordCloud(width=800, height=400, background_color='white', colormap='magma').generate(text)
-    fig, ax = plt.subplots(figsize=(12,6))
-    ax.imshow(wordcloud, interpolation='bilinear')
-    ax.axis('off')
-    return fig
-
-def main():
-    keyword = st.text_input("Enter niche keyword (e.g., beauty, fashion)", value="beauty")
-    tweet_limit = st.slider("Number of tweets to analyze", min_value=50, max_value=200, value=100, step=10)
-
-    if st.button("Analyze"):
-        with st.spinner("Fetching tweets and analyzing..."):
-            tweets_df = fetch_tweets(keyword, limit=tweet_limit)
-            if tweets_df.empty:
-                st.warning("No tweets found for this keyword. Try another one!")
-                return
-
-            keywords = extract_keywords(tweets_df)
-            eng_df = keyword_engagement(tweets_df, keywords)
-
-            st.subheader(f"Top Keywords Driving Engagement for '{keyword}'")
-            st.dataframe(eng_df[['avg_engagement', 'engagement', 'count']].head(20))
-
-            st.subheader("Bar Chart of Top Keywords")
-            st.pyplot(plot_bar(eng_df))
-
-            st.subheader("Word Cloud of Keywords")
-            st.pyplot(plot_wordcloud(keywords))
-
-            st.subheader("Sample High Engagement Tweets")
-            top_tweets = tweets_df.sort_values(by='engagement', ascending=False).head(5)
-            for idx, row in top_tweets.iterrows():
-                st.markdown(f"**Engagement:** {row['engagement']}  \n{row['content']}")
-
-if __name__ == "__main__":
-    main()
+plt.figure(figsize=(10, 5))
+plt.imshow(wordcloud, interpolation='bilinear')
+plt.axis("off")
+st.pyplot(plt)
