@@ -1,5 +1,5 @@
 streamlit
-snscrape==0.4.3.3
+snscrape
 pandas
 matplotlib
 wordcloud
